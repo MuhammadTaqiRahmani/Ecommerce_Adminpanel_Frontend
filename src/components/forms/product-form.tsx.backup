@@ -110,41 +110,24 @@ export function ProductForm({ product, isEdit = false }: ProductFormProps) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onSubmit = async (data: any) => {
-    // Transform frontend fields to match backend API expectations
-    // Backend expects: stock_quantity (not quantity), is_active (not status)
-    // Backend does NOT support: is_taxable, tax_rate, tags
-    console.log('Form data before transform:', data);
-    const apiData = {
-      name: data.name,
-      slug: data.slug || undefined,
-      description: data.description || undefined,
-      short_description: data.short_description || undefined,
-      sku: data.sku || undefined,
-      barcode: data.barcode || undefined,
-      price: data.price,
+    // Clean up data - ensure proper types for API
+    const cleanData: CreateProductRequest | UpdateProductRequest = {
+      ...data,
+      category_id: data.category_id && data.category_id !== 'none' ? data.category_id : undefined,
       compare_at_price: data.compare_at_price || undefined,
       cost_price: data.cost_price || undefined,
-      stock_quantity: data.quantity || 0,  // Map quantity → stock_quantity
-      low_stock_threshold: data.low_stock_threshold || undefined,
       weight: data.weight || undefined,
-      weight_unit: data.weight_unit || undefined,
-      is_active: data.status === 'active',  // Map status → is_active
-      is_featured: data.is_featured || false,
-      is_digital: false,
-      meta_title: data.meta_title || undefined,
-      meta_description: data.meta_description || undefined,
-      category_id: data.category_id && data.category_id !== 'none' ? data.category_id : undefined,
-      // Note: tags, is_taxable, tax_rate are NOT sent to backend (unsupported)
+      tax_rate: data.tax_rate || undefined,
+      tags,
     };
-    console.log('API payload being sent:', JSON.stringify(apiData, null, 2));
 
     if (isEdit && product) {
       await updateMutation.mutateAsync({
         id: product.id,
-        data: apiData as UpdateProductFormData,
+        data: cleanData as UpdateProductFormData,
       });
     } else {
-      await createMutation.mutateAsync(apiData as CreateProductFormData);
+      await createMutation.mutateAsync(cleanData as CreateProductFormData);
     }
     router.push('/products');
   };

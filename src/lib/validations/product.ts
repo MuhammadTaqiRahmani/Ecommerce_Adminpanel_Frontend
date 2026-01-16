@@ -14,8 +14,9 @@ export const createProductSchema = z.object({
   short_description: z.string().optional(),
   sku: z
     .string()
-    .min(1, 'SKU is required')
-    .max(100, 'SKU must be less than 100 characters'),
+    .max(100, 'SKU must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),  // SKU is optional in backend
   barcode: z
     .string()
     .max(100, 'Barcode must be less than 100 characters')
@@ -68,13 +69,14 @@ export const createProductSchema = z.object({
   meta_title: z.string().optional(),
   meta_description: z.string().optional(),
   category_id: z
-    .string()
-    .uuid('Invalid category')
+    .union([
+      z.literal(''),
+      z.literal('none'),
+      z.string().uuid('Invalid category'),
+    ])
     .optional()
     .nullable()
-    .or(z.literal(''))
-    .or(z.literal('none'))
-    .transform((val) => (val === '' || val === 'none' || val === null ? undefined : val)),
+    .transform((val) => (val === '' || val === 'none' || val === null || val === undefined ? undefined : val)),
   tags: z.array(z.string()).optional().default([]),
   images: z.array(z.string()).optional().default([]),
 });

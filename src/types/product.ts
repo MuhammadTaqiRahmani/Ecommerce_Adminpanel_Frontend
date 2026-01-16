@@ -55,29 +55,28 @@ export interface Product {
 }
 
 // Product Request Types
+// CreateProductRequest matches backend CreateProductRequest DTO
 export interface CreateProductRequest {
   name: string;
   slug?: string;
   description?: string;
   short_description?: string;
-  sku: string;
+  sku?: string;  // Optional in backend
   barcode?: string;
   price: number;
   compare_at_price?: number;
   cost_price?: number;
-  quantity?: number;
+  stock_quantity?: number;  // Backend uses stock_quantity, not quantity
   low_stock_threshold?: number;
   weight?: number;
   weight_unit?: WeightUnit;
-  status?: ProductStatus;
+  is_active?: boolean;  // Backend uses is_active boolean, not status string
   is_featured?: boolean;
-  is_taxable?: boolean;
-  tax_rate?: number;
+  is_digital?: boolean;
   meta_title?: string;
   meta_description?: string;
   category_id?: string;
-  tags?: string[];
-  images?: string[];
+  // Note: tags, is_taxable, tax_rate are NOT supported by backend
 }
 
 export interface UpdateProductRequest extends Partial<CreateProductRequest> {}
