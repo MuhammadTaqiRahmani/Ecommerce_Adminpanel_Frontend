@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -38,6 +38,8 @@ import { Category } from '@/types/category';
 import { useCategories } from '@/lib/hooks/use-categories';
 import { useCreateProduct, useUpdateProduct } from '@/lib/hooks/use-products';
 import { slugify } from '@/lib/utils/format';
+import { ProductImagesUpload, ProductImagesUploadRef } from './product-images-upload';
+import { productImagesApi } from '@/lib/api/product-images';
 
 interface ProductFormProps {
   product?: Product;
@@ -48,6 +50,7 @@ export function ProductForm({ product, isEdit = false }: ProductFormProps) {
   const router = useRouter();
   const [tags, setTags] = useState<string[]>(product?.tags || []);
   const [tagInput, setTagInput] = useState('');
+  const imageUploadRef = useRef<ProductImagesUploadRef>(null);
 
   const { data: categoriesResponse } = useCategories({ page: 1, limit: 100 });
   const createMutation = useCreateProduct();
@@ -68,8 +71,8 @@ export function ProductForm({ product, isEdit = false }: ProductFormProps) {
       price: product?.price || 0,
       compare_at_price: product?.compare_at_price ?? undefined,
       cost_price: product?.cost_price ?? undefined,
-      quantity: product?.quantity || 0,
-      low_stock_threshold: product?.low_stock_threshold || 5,
+      quantity: product?.stock_quantity ?? product?.quantity ?? 0,  // Backend sends stock_quantity
+      low_stock_threshold: product?.low_stock_threshold ?? 5,
       weight: product?.weight ?? undefined,
       weight_unit: product?.weight_unit || 'kg',
       status: product?.status || 'draft',
@@ -138,14 +141,50 @@ export function ProductForm({ product, isEdit = false }: ProductFormProps) {
     };
     console.log('API payload being sent:', JSON.stringify(apiData, null, 2));
 
+    let productId: string | undefined;
+
     if (isEdit && product) {
       await updateMutation.mutateAsync({
         id: product.id,
-        data: apiData as UpdateProductFormData,
+        data: apiData as unknown as UpdateProductFormData,
       });
+      productId = product.id;
     } else {
-      await createMutation.mutateAsync(apiData as CreateProductFormData);
+      // Create the product first
+      const result = await createMutation.mutateAsync(apiData as unknown as CreateProductFormData);
+      // Extract product ID from the response - API returns { success, data: Product }
+      console.log('Create product response:', result);
+      productId = (result as { data?: { id?: string } })?.data?.id;
+      console.log('Extracted product ID:', productId);
     }
+
+    // After product creation/update, save the uploaded images
+    if (productId && imageUploadRef.current) {
+      const uploadedImages = imageUploadRef.current.getUploadedUrls();
+      console.log('Saving images to product:', productId, uploadedImages);
+
+      // Save each image to product_images table
+      for (const img of uploadedImages) {
+        try {
+          console.log('Attempting to save image:', JSON.stringify({ productId, url: img.url, is_primary: img.is_primary, sort_order: img.sort_order }));
+          await productImagesApi.addImage(productId, {
+            url: img.url,
+            is_primary: img.is_primary,
+            sort_order: img.sort_order,
+          });
+          console.log('Image saved successfully:', img.url);
+        } catch (error: unknown) {
+          console.error('Failed to save image:', img.url);
+          // Log full error details
+          if (error && typeof error === 'object' && 'response' in error) {
+            const axiosError = error as { response?: { data?: unknown; status?: number } };
+            console.error('Error status:', axiosError.response?.status);
+            console.error('Error response data:', JSON.stringify(axiosError.response?.data, null, 2));
+          }
+        }
+      }
+    }
+
     router.push('/products');
   };
 
@@ -157,6 +196,13 @@ export function ProductForm({ product, isEdit = false }: ProductFormProps) {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Product Images - New Section */}
+            <ProductImagesUpload
+              ref={imageUploadRef}
+              productId={product?.id}
+              isEdit={isEdit}
+            />
+
             <Card>
               <CardHeader>
                 <CardTitle>Product Information</CardTitle>

@@ -13,8 +13,8 @@ const apiClient = axios.create({
 // Token management functions (will be set by auth store)
 let getToken: () => string | null = () => null;
 let getRefreshToken: () => string | null = () => null;
-let setTokens: (token: string, refreshToken: string) => void = () => {};
-let clearAuth: () => void = () => {};
+let setTokens: (token: string, refreshToken: string) => void = () => { };
+let clearAuth: () => void = () => { };
 
 export function setTokenHandlers(handlers: {
   getToken: () => string | null;
@@ -32,6 +32,7 @@ export function setTokenHandlers(handlers: {
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getToken();
+    console.log('[API Client] Request to:', config.url, '| Token present:', !!token);
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }

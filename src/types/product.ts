@@ -31,10 +31,12 @@ export interface Product {
   compare_at_price: number;
   cost_price: number;
   quantity: number;
+  stock_quantity?: number;  // Backend returns this instead of quantity
   low_stock_threshold: number;
   weight: number;
   weight_unit: WeightUnit;
   status: ProductStatus;
+  is_active?: boolean;  // Backend returns this boolean instead of status string
   is_featured: boolean;
   is_taxable: boolean;
   tax_rate: number;
@@ -44,12 +46,12 @@ export interface Product {
   category: Category | null;
   tags: string[];
   images: Media[];
-  
+
   // Computed fields
   in_stock: boolean;
   low_stock: boolean;
   discount_percentage: number;
-  
+
   created_at: string;
   updated_at: string;
 }
@@ -79,7 +81,7 @@ export interface CreateProductRequest {
   // Note: tags, is_taxable, tax_rate are NOT supported by backend
 }
 
-export interface UpdateProductRequest extends Partial<CreateProductRequest> {}
+export interface UpdateProductRequest extends Partial<CreateProductRequest> { }
 
 export interface UpdateStockRequest {
   quantity: number;

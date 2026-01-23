@@ -74,21 +74,31 @@ export function getProductColumns({ onDelete }: ProductColumnsProps): ColumnDef<
       },
     },
     {
-      accessorKey: 'quantity',
+      accessorKey: 'stock_quantity',
       header: 'Stock',
       cell: ({ row }) => {
-        const quantity = row.original.quantity;
-        const lowStock = row.original.low_stock_threshold;
-        const isLowStock = quantity <= lowStock;
+        // Backend returns stock_quantity, not quantity
+        const quantity = row.original.stock_quantity ?? row.original.quantity ?? 0;
+        const lowStock = row.original.low_stock_threshold ?? 10;
+        const isOutOfStock = quantity === 0;
+        const isLowStock = quantity > 0 && quantity <= lowStock;
 
         return (
           <div className="flex items-center gap-2">
-            <span className={isLowStock ? 'text-destructive font-medium' : ''}>
+            <span className={isOutOfStock ? 'text-destructive font-medium' : isLowStock ? 'text-orange-600 font-medium' : ''}>
               {quantity}
             </span>
-            {isLowStock && (
+            {isOutOfStock ? (
               <Badge variant="destructive" className="text-xs">
-                Low
+                Out of Stock
+              </Badge>
+            ) : isLowStock ? (
+              <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
+                Low Stock
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+                In Stock
               </Badge>
             )}
           </div>
@@ -96,15 +106,32 @@ export function getProductColumns({ onDelete }: ProductColumnsProps): ColumnDef<
       },
     },
     {
-      accessorKey: 'status',
+      accessorKey: 'is_active',
       header: 'Status',
       cell: ({ row }) => {
+        // Backend returns is_active boolean, convert to status display
+        const isActive = row.original.is_active;
         const status = row.original.status;
-        return (
-          <Badge variant={getProductStatusColor(status) as 'default' | 'secondary' | 'destructive'}>
-            {getProductStatusLabel(status)}
-          </Badge>
-        );
+
+        // Support both is_active boolean and status string
+        if (typeof isActive === 'boolean') {
+          return (
+            <Badge variant={isActive ? 'default' : 'secondary'}>
+              {isActive ? 'Active' : 'Inactive'}
+            </Badge>
+          );
+        }
+
+        // Fallback to status string if available
+        if (status) {
+          return (
+            <Badge variant={getProductStatusColor(status) as 'default' | 'secondary' | 'destructive'}>
+              {getProductStatusLabel(status)}
+            </Badge>
+          );
+        }
+
+        return <span className="text-muted-foreground">—</span>;
       },
     },
     {
